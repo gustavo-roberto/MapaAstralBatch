@@ -20,10 +20,10 @@ public class FileIO {
     private static final String PROJECT_PATH = System.getProperty("user.dir");
     private static final String RESOURCES_PATH = PROJECT_PATH.concat("/src").concat("/main").concat("/resources");
 
-    public static void run() throws IOException {
+    public static void run() {
         Path grupoTxtPath = Paths.get(RESOURCES_PATH, "grupo.txt");
 
-        atualizarBancoPessoas(grupoTxtPath); // precisa preencher o DB para a classe Stream funcionar
+        atualizarBancoPessoas(grupoTxtPath);
 
         gerarRelatorios();
     }
@@ -35,12 +35,16 @@ public class FileIO {
 
     private static List<Pessoa> lerArquivoPessoas(Path arquivo) {
         System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "5");
+        System.out.println("---Reading Files---");
         try {
             List<String> lines = Files.readAllLines(arquivo);
 
            return lines.stream()
                     .parallel()
-                    .map(PessoaMapper::fileStringToPessoa)
+                    .map(line -> {
+                        System.out.println("Thread Name: " + Thread.currentThread().getName());
+                        return PessoaMapper.fileStringToPessoa(line);
+                    })
                     .collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("Arquivo não encontrado!");
@@ -48,10 +52,12 @@ public class FileIO {
     }
 
     private static void gerarRelatorios() {
+        System.out.println("---Report Creation---");
         PessoaDatabase.findAll().stream()
                 .parallel()
                 .forEach(pessoa -> {
                     try {
+                        System.out.println("Thread Name: " + Thread.currentThread().getName());
                         escreverResultadosPessoa(pessoa);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
