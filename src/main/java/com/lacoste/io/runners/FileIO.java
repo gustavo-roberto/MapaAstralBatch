@@ -47,20 +47,28 @@ public class FileIO {
         }
     }
 
-    private static void gerarRelatorios() throws IOException {
-        var pessoas = PessoaDatabase.findAll();
+    private static void gerarRelatorios() {
+        PessoaDatabase.findAll().stream()
+                .parallel()
+                .forEach(pessoa -> {
+                    try {
+                        escreverResultadosPessoa(pessoa);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
 
-        for (Pessoa pessoa : pessoas) {
-            Path filePath = Paths.get(RESOURCES_PATH, pessoa.getNome() + ".txt");
+    private static void escreverResultadosPessoa(Pessoa pessoa) throws IOException {
+        Path filePath = Paths.get(RESOURCES_PATH, pessoa.getNome() + ".txt");
 
-            List<String> results = getResultsPessoa(pessoa);
+        List<String> results = getResultsPessoa(pessoa);
 
-            if (Files.exists(filePath))
-                Files.delete(filePath);
+        if (Files.exists(filePath))
+            Files.delete(filePath);
 
-            Files.createFile(filePath);
-            Files.write(filePath, results);
-        }
+        Files.createFile(filePath);
+        Files.write(filePath, results);
     }
 
     private static List<String> getResultsPessoa(Pessoa pessoa) {
