@@ -34,13 +34,14 @@ public class FileIO {
     }
 
     private static List<Pessoa> lerArquivoPessoas(Path arquivo) {
+        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "5");
         try {
             List<String> lines = Files.readAllLines(arquivo);
 
-            return lines.stream()
+           return lines.stream()
+                    .parallel()
                     .map(PessoaMapper::fileStringToPessoa)
                     .collect(Collectors.toList());
-
         } catch (IOException e) {
             throw new RuntimeException("Arquivo não encontrado!");
         }
