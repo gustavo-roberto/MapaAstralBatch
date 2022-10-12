@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class FileIO {
@@ -25,7 +26,18 @@ public class FileIO {
 
         atualizarBancoPessoas(grupoTxtPath);
 
-        gerarRelatorios();
+        long tempoInicialSemThread = System.nanoTime();
+        gerarRelatoriosSemThreads();
+        long  intervaloSemThread = System.nanoTime() - tempoInicialSemThread;
+
+        long tempoInicialComThread = System.nanoTime();
+        gerarRelatoriosComThreads();
+        long intervaloComThread = System.nanoTime() - tempoInicialComThread;
+
+        System.out.println("Tempo de processamento Sem Threads: " + intervaloSemThread);
+        System.out.println("Tempo de processamento com Threads: " + intervaloComThread);
+        long diferencaTempo = intervaloSemThread - intervaloComThread;
+        System.out.println("Geração de relatórios com threads é " + diferencaTempo + " nano segundos mais rápido do que sem threads");
     }
 
     private static void atualizarBancoPessoas(Path arquivo) {
@@ -43,7 +55,11 @@ public class FileIO {
                     .parallel()
                     .map(line -> {
                         System.out.println("Thread Name: " + Thread.currentThread().getName());
-                        return PessoaMapper.fileStringToPessoa(line);
+                        try {
+                            return PessoaMapper.fileStringToPessoa(line);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
                     })
                     .collect(Collectors.toList());
         } catch (IOException e) {
@@ -51,8 +67,22 @@ public class FileIO {
         }
     }
 
-    private static void gerarRelatorios() {
-        System.out.println("---Report Creation---");
+    private static void gerarRelatoriosSemThreads() {
+        System.out.println("----Processamento sem Threads");
+        PessoaDatabase.findAll()
+                .forEach(pessoa -> {
+                    try {
+                        escreverResultadosPessoa(pessoa);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+
+    private static void gerarRelatoriosComThreads() {
+        System.out.println("Processamento com Threads\n---Report Creation---");
         PessoaDatabase.findAll().stream()
                 .parallel()
                 .forEach(pessoa -> {
@@ -61,13 +91,16 @@ public class FileIO {
                         escreverResultadosPessoa(pessoa);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
                 });
     }
 
-    private static void escreverResultadosPessoa(Pessoa pessoa) throws IOException {
-        Path filePath = Paths.get(RESOURCES_PATH, pessoa.getNome() + ".txt");
+    private static void escreverResultadosPessoa(Pessoa pessoa) throws IOException, InterruptedException {
+        TimeUnit.SECONDS.sleep(2);
 
+        Path filePath = Paths.get(RESOURCES_PATH, pessoa.getNome() + ".txt");
         List<String> results = getResultsPessoa(pessoa);
 
         if (Files.exists(filePath))
